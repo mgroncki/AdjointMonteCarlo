@@ -1,4 +1,4 @@
-# Adjoint Monte Carlo Simulation 
+# Monte Carlo Simulation and adjoint Greeks
 
 Use CppAD for calculation of greeks (sensivities) doing Monte Carlo Simulation.
 
