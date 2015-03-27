@@ -1,0 +1,4 @@
+*.opensdf
+*ipch*
+Debug
+Release
