@@ -11,5 +11,5 @@ clean:
 
 all:
 	mkdir -p $(OUT_DIR)
-	g++ -W -Wall -O3 -std=c++11 -o $(OUT_DIR)blackMC blackMC.cpp
+	g++ -W -Wall -O3 -std=c++11 -lQuantLib -o $(OUT_DIR)blackMC blackMC.cpp
 	./$(OUT_DIR)/blackMC

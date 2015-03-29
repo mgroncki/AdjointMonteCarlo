@@ -7,6 +7,7 @@
 #include <string>
 #include <boost/timer.hpp>
 #include <iostream>
+#include <ql/pricingengines/blackcalculator.hpp>
 
 using namespace std;
 using CppAD::AD;
@@ -136,7 +137,22 @@ int main(){
     double r = 0.03;
     double T = 1.;
     double K = 103.;
-    vector<double> Ns = { 1e4, 1e5, 2.5e5, 5e5, 7.5e5, 1e6, 2.5e6, 5e6, 7.5e6, 1e7, 2e7, 3e7 };
+
+    QuantLib::BlackCalculator analytic(QuantLib::Option::Call, 
+            K,
+            S*exp(r*T),
+            sigma * sqrt(T),
+            exp(-r*T));
+
+    cout << "Analytic BlackScholes Formula " << endl
+        << "Price : " << analytic.value() << endl
+        << "Delta : " << analytic.delta(S) << endl
+        << "Gamma : " << analytic.gamma(S) << endl
+        << "Vega  : " << analytic.vega(T) << endl
+        << "Rho   : " << analytic.rho(T) << endl
+        << endl;
+
+    vector<double> Ns = { 1e4 , 1e5, 2.5e5, 5e5, 7.5e5, 1e6, 2.5e6, 5e6, 7.5e6, 1e7, 2e7, 3e7 };
     cout << "Calculate pathwise greeks with automatic differentiation " << endl;
     for(auto N : Ns) {
         cout << "Sample size = " << N << endl;
