@@ -1,4 +1,4 @@
-// AdjointMonteCarlo.cpp : Definiert den Einstiegspunkt für die Konsolenanwendung.
+// AdjointMonteCarlo.cpp : Definiert den Einstiegspunkt fÃ¼r die Konsolenanwendung.
 //
 
 #include <vector>
@@ -36,6 +36,11 @@ T PayOff(const T & S, double K){
 }
 
 template<typename T = double>
+T PayOffDer(const T & S, double K){
+    return CppAD::CondExpGt(S, K, 1.0, 0.0);
+}
+
+template<typename T = double>
 T BlackProcess(const T & S0,const T & sigma,const T & r, double t,  double dZ){
     return S0*exp((r - sigma*sigma / 2.0)*t + sigma*sqrt(t)*dZ);
 }
@@ -51,18 +56,46 @@ T monteCarloSim(const T & S0, const T & sigma, const T & r, double t, double K, 
     return exp(-r*t) * res / N;
 }
 
+template<typename T = double>
+vector<double> pathwiseGreeks(const T & S0, const T & sigma, const T & r, double t, double K, double N = 100000) {
+    vector<double> result(5, 0.);
+    std::random_device rd;
+    std::mt19937 rengine(rd());
+    std::normal_distribution<> normal_dist(0, 1);
+    T payoffSum = 0, vegaSum = 0, rhoSum = 0, deltaSum = 0, St, payoffDer;
+    for (int i = 0; i < (int)N; i++) {
+        St = BlackProcess(S0, sigma, r, t, normal_dist(rengine));
+        payoffDer = PayOffDer(St, K);
+        payoffSum += PayOff(St, K);
+        vegaSum += payoffDer * St * (log(St / S0) - (r + 0.5 * pow(sigma, 2.0)) * t) / sigma;
+        rhoSum += (payoffDer * St - PayOff(St, K)) * t;
+        deltaSum += payoffDer * St / S0;
+    }
+    // Calculate NPV
+    result[0] = exp(-r*t) * payoffSum / N;
+    // Calc delta
+    result[1] = exp(-r*t) * deltaSum / N;
+    // Calc vega
+    result[2] = exp(-r*t) * vegaSum / N;
+    // Calc rho
+    result[3] = exp(-r*t) * rhoSum / N;
+    // Calc gamma - NOTE: Can't be computed because payoff in delta is discontinuous
+    result[4] = 0;
+    return result;
+}
+
 vector<double> classicalBumpMethod(double S, double sigma, double r, double t, double K, double N = 10000000){
     vector<double> res(5, 0.);
     // Calculate NPV
     res[0] = monteCarloSim(S, sigma, r, t, K,N);
     // Calc delta
     double h = 1;
-    res[1] = (monteCarloSim(S+h, sigma, r, t, K, N)-monteCarloSim(S-h, sigma, r, t, K,N)) / (2*h);
+    res[1] = (monteCarloSim(S+h, sigma, r, t, K, N)-monteCarloSim(S-h, sigma, r, t, K, N)) / (2*h);
     // Calc vega
     h = 0.001;
-    res[2] = (monteCarloSim(S, sigma+h, r, t, K, N)-monteCarloSim(S, sigma-h, r, t, K,N)) / (2*h);
+    res[2] = (monteCarloSim(S, sigma+h, r, t, K, N)-monteCarloSim(S, sigma-h, r, t, K, N)) / (2*h);
     // Calc rho
-    res[3] = (monteCarloSim(S, sigma, r+h, t, K, N )-monteCarloSim(S, sigma, r-h, t, K,N)) / (2*h);
+    res[3] = (monteCarloSim(S, sigma, r+h, t, K, N )-monteCarloSim(S, sigma, r-h, t, K, N)) / (2*h);
     // Calc gamma
     h = 1;
     res[4] = (monteCarloSim(S + 2. * h, sigma, r, t, K, N) - 
@@ -158,6 +191,14 @@ int main(){
         cout << "Sample size = " << N << endl;
         t.restart();
         vector<double> res = pathwiseGreeksWithAutomaticDiff(S, sigma, r, T, K, N);
+        outputResults(res);
+        cout << "Time elapsed " << t.elapsed() << endl << endl;
+    }
+    cout << "Calculate pathwise greeks with pathwise derivative method " << endl;
+    for(auto N : Ns) {
+        cout << "Sample size = " << N << endl;
+        t.restart();
+        vector<double> res = pathwiseGreeks(S, sigma, r, T, K, N);
         outputResults(res);
         cout << "Time elapsed " << t.elapsed() << endl << endl;
     }
